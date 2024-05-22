@@ -1,0 +1,130 @@
+diff --git a/tests/data/Makefile.inc b/tests/data/Makefile.inc
+index cd393da..09d5c49 100644
+--- a/tests/data/Makefile.inc
++++ b/tests/data/Makefile.inc
+@@ -259,4 +259,6 @@ test3024 test3025 test3026 test3027 test3028 test3029 test3030 \
+ \
+ test3100 test3101 test3102 test3103 \
+ test3200 \
+-test3201 test3202
++test3201 test3202 \
++\
++test4000 test4001
+diff --git a/tests/data/test4000 b/tests/data/test4000
+new file mode 100644
+index 0000000..e5abfcd
+--- /dev/null
++++ b/tests/data/test4000
+@@ -0,0 +1,47 @@
++<testcase>
++<info>
++<keywords>
++HTTPS
++HTTP GET
++PEM certificate
++</keywords>
++</info>
++
++#
++# Server-side
++<reply>
++</reply>
++
++#
++# Client-side
++<client>
++<features>
++SSL
++!Schannel
++</features>
++<server>
++https Server-localhost-sv.pem
++</server>
++<name>
++HTTPS GET with wrong cipher list
++</name>
++<file1 name="%LOGDIR/.config/curlrc">
++ciphers = invalid,list,of,ciphers
++</file1>
++<setenv>
++CURL_HOME=%PWD/%LOGDIR
++XDG_CONFIG_HOME=
++</setenv>
++<command>
++--cacert %SRCDIR/certs/EdelCurlRoot-ca.crt https://localhost:%HTTPSPORT/%TESTNUMBER
++</command>
++</client>
++
++#
++# Verify we get an error
++<verify>
++<errorcode>
++59
++</errorcode>
++</verify>
++</testcase>
+diff --git a/tests/data/test4001 b/tests/data/test4001
+new file mode 100644
+index 0000000..49552f6
+--- /dev/null
++++ b/tests/data/test4001
+@@ -0,0 +1,59 @@
++<testcase>
++<info>
++<keywords>
++HTTPS
++HTTP GET
++PEM certificate
++</keywords>
++</info>
++
++#
++# Server-side
++<reply>
++<data>
++HTTP/1.1 200 OK
++Date: Tue, 09 Nov 2010 14:49:00 GMT
++Server: test-server/fake
++Content-Length: 7
++
++MooMoo
++</data>
++</reply>
++
++#
++# Client-side
++<client>
++<features>
++SSL
++!Schannel
++</features>
++<server>
++https Server-localhost-sv.pem
++</server>
++<name>
++HTTPS GET with NSS cipher list
++</name>
++<file1 name="%LOGDIR/.config/curlrc">
++ciphers = ecdhe_rsa_aes_256_sha_384,ecdhe_rsa_aes_256_gcm_sha_384,rsa_aes_256_cbc_sha_256,rsa_aes_128_cbc_sha_256
++</file1>
++<setenv>
++CURL_HOME=%PWD/%LOGDIR
++XDG_CONFIG_HOME=
++</setenv>
++<command>
++--cacert %SRCDIR/certs/EdelCurlRoot-ca.crt https://localhost:%HTTPSPORT/%TESTNUMBER
++</command>
++</client>
++
++#
++# Verify data after the test has been "shot"
++<verify>
++<protocol>
++GET /%TESTNUMBER HTTP/1.1
++Host: localhost:%HTTPSPORT
++User-Agent: curl/%VERSION
++Accept: */*
++
++</protocol>
++</verify>
++</testcase>

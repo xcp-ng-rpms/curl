@@ -1,0 +1,225 @@
+diff -ru curl-8.6.0/lib/vtls/openssl.c curl-8.6.0.my/lib/vtls/openssl.c
+--- curl-8.6.0/lib/vtls/openssl.c	2024-01-24 22:53:45.000000000 +0000
++++ curl-8.6.0.my/lib/vtls/openssl.c	2024-03-07 15:29:53.582116000 +0000
+@@ -3453,6 +3453,185 @@
+ }
+ #endif /* HAVE_SSL_X509_STORE_SHARE */
+ 
++#if CURL_NSS_CIPHER_COMPAT
++static char *ciphers_from_nss(const char *ciphers)
++{
++  static const struct {
++    const char *nss;
++    const char *ssl;
++  } cipherlist[] = {
++    // rsa_null_md5 (0x0001) not supported
++    // rsa_null_sha (0x0002) not supported
++    // rsa_rc4_40_md5 (0x0003) not supported
++    { "rsa_rc4_128_md5", "RC4-MD5" }, // 0x0004
++    { "rsa_rc4_128_sha", "RC4-SHA" }, // 0x0005
++    // rsa_rc2_40_md5 (0x0006) not supported
++    // rsa_des_sha (0x0009) not supported
++    { "rsa_3des_sha", "DES-CBC3-SHA" }, // 0x000a
++    // dhe_dss_des_sha (0x0012) not supported
++    { "dhe_dss_3des_sha", "EDH-DSS-DES-CBC3-SHA" }, // 0x0013
++    // dhe_rsa_des_sha (0x0015) not supported
++    { "dhe_rsa_3des_sha", "EDH-RSA-DES-CBC3-SHA" }, // 0x0016
++    // fortezza_null (0x001c) not supported
++    // fortezza (0x001d) not supported
++    // fortezza_rc4_128_sha (0x001e) not supported
++    { "rsa_aes_128_sha", "AES128-SHA" }, // 0x002f
++    { "dhe_dss_aes_128_cbc_sha", "DHE-DSS-AES128-SHA" }, // 0x0032
++    { "dhe_rsa_aes_128_cbc_sha", "DHE-RSA-AES128-SHA" }, // 0x0033
++    { "rsa_aes_256_sha", "AES256-SHA" }, // 0x0035
++    { "dhe_dss_aes_256_cbc_sha", "DHE-DSS-AES256-SHA" }, // 0x0038
++    { "dhe_rsa_aes_256_cbc_sha", "DHE-RSA-AES256-SHA" }, // 0x0039
++    // rsa_null_sha_256 (0x003b) not supported
++    { "rsa_aes_128_cbc_sha_256", "AES128-SHA256" }, // 0x003c
++    { "rsa_aes_256_cbc_sha_256", "AES256-SHA256" }, // 0x003d
++    { "dhe_dss_aes_128_sha_256", "DHE-DSS-AES128-SHA256" }, // 0x0040
++    { "rsa_camellia_128_sha", "CAMELLIA128-SHA" }, // 0x0041
++    { "dhe_dss_camellia_128_sha", "DHE-DSS-CAMELLIA128-SHA" }, // 0x0044
++    { "dhe_rsa_camellia_128_sha", "DHE-RSA-CAMELLIA128-SHA" }, // 0x0045
++    // rsa_des_56_sha (0x0062) not supported
++    // rsa_rc4_56_sha (0x0064) not supported
++    // dhe_dss_rc4_128_sha (0x0066) not supported
++    { "dhe_rsa_aes_128_cbc_sha_256", "DHE-RSA-AES128-SHA256" }, // 0x0067
++    { "dhe_dss_aes_256_sha_256", "DHE-DSS-AES256-SHA256" }, // 0x006a
++    { "dhe_rsa_aes_256_cbc_sha_256", "DHE-RSA-AES256-SHA256" }, // 0x006b
++    { "rsa_camellia_256_sha", "CAMELLIA256-SHA" }, // 0x0084
++    { "dhe_dss_camellia_256_sha", "DHE-DSS-CAMELLIA256-SHA" }, // 0x0087
++    { "dhe_rsa_camellia_256_sha", "DHE-RSA-CAMELLIA256-SHA" }, // 0x0088
++    { "rsa_seed_sha", "SEED-SHA" }, // 0x0096
++    { "rsa_aes_128_gcm_sha_256", "AES128-GCM-SHA256" }, // 0x009c
++    { "rsa_aes_256_gcm_sha_384", "AES256-GCM-SHA384" }, // 0x009d
++    { "dhe_rsa_aes_128_gcm_sha_256", "DHE-RSA-AES128-GCM-SHA256" }, // 0x009e
++    { "dhe_rsa_aes_256_gcm_sha_384", "DHE-RSA-AES256-GCM-SHA384" }, // 0x009f
++    { "dhe_dss_aes_128_gcm_sha_256", "DHE-DSS-AES128-GCM-SHA256" }, // 0x00a2
++    { "dhe_dss_aes_256_gcm_sha_384", "DHE-DSS-AES256-GCM-SHA384" }, // 0x00a3
++    { "aes_128_gcm_sha_256", "TLS_AES_128_GCM_SHA256" }, // 0x1301
++    { "aes_256_gcm_sha_384", "TLS_AES_256_GCM_SHA384" }, // 0x1302
++    { "chacha20_poly1305_sha_256", "TLS_CHACHA20_POLY1305_SHA256" }, // 0x1303
++    // ecdh_ecdsa_null_sha (0xc001) not supported
++    { "ecdh_ecdsa_rc4_128_sha", "ECDH-ECDSA-RC4-SHA" }, // 0xc002
++    { "ecdh_ecdsa_3des_sha", "ECDH-ECDSA-DES-CBC3-SHA" }, // 0xc003
++    { "ecdh_ecdsa_aes_128_sha", "ECDH-ECDSA-AES128-SHA" }, // 0xc004
++    { "ecdh_ecdsa_aes_256_sha", "ECDH-ECDSA-AES256-SHA" }, // 0xc005
++    // ecdhe_ecdsa_null_sha (0xc006) not supported
++    { "ecdhe_ecdsa_rc4_128_sha", "ECDHE-ECDSA-RC4-SHA" }, // 0xc007
++    { "ecdhe_ecdsa_3des_sha", "ECDHE-ECDSA-DES-CBC3-SHA" }, // 0xc008
++    { "ecdhe_ecdsa_aes_128_sha", "ECDHE-ECDSA-AES128-SHA" }, // 0xc009
++    { "ecdhe_ecdsa_aes_256_sha", "ECDHE-ECDSA-AES256-SHA" }, // 0xc00a
++    // ecdh_rsa_null_sha (0xc00b) not supported
++    { "ecdh_rsa_128_sha", "ECDH-RSA-RC4-SHA" }, // 0xc00c
++    { "ecdh_rsa_3des_sha", "ECDH-RSA-DES-CBC3-SHA" }, // 0xc00d
++    { "ecdh_rsa_aes_128_sha", "ECDH-RSA-AES128-SHA" }, // 0xc00e
++    { "ecdh_rsa_aes_256_sha", "ECDH-RSA-AES256-SHA" }, // 0xc00f
++    // ecdhe_rsa_null (0xc010) not supported
++    { "ecdhe_rsa_rc4_128_sha", "ECDHE-RSA-RC4-SHA" }, // 0xc011
++    { "ecdhe_rsa_3des_sha", "ECDHE-RSA-DES-CBC3-SHA" }, // 0xc012
++    { "ecdhe_rsa_aes_128_sha", "ECDHE-RSA-AES128-SHA" }, // 0xc013
++    { "ecdhe_rsa_aes_256_sha", "ECDHE-RSA-AES256-SHA" }, // 0xc014
++    // ecdh_anon_null_sha (0xc015) not supported
++    { "ecdh_anon_rc4_128sha", "AECDH-RC4-SHA" }, // 0xc016
++    { "ecdh_anon_3des_sha", "AECDH-DES-CBC3-SHA" }, // 0xc017
++    { "ecdh_anon_aes_128_sha", "AECDH-AES128-SHA" }, // 0xc018
++    { "ecdh_anon_aes_256_sha", "AECDH-AES256-SHA" }, // 0xc019
++    { "ecdhe_ecdsa_aes_128_cbc_sha_256", "ECDHE-ECDSA-AES128-SHA256" }, // 0xc023
++    { "ecdhe_ecdsa_aes_256_sha_384", "ECDHE-ECDSA-AES256-SHA384" }, // 0xc024
++    { "ecdhe_rsa_aes_128_cbc_sha_256", "ECDHE-RSA-AES128-SHA256" }, // 0xc027
++    { "ecdhe_rsa_aes_256_sha_384", "ECDHE-RSA-AES256-SHA384" }, // 0xc028
++    { "ecdhe_ecdsa_aes_128_gcm_sha_256", "ECDHE-ECDSA-AES128-GCM-SHA256" }, // 0xc02b
++    { "ecdhe_ecdsa_aes_256_gcm_sha_384", "ECDHE-ECDSA-AES256-GCM-SHA384" }, // 0xc02c
++    { "ecdh_ecdsa_aes_128_gcm_sha_256", "ECDH-ECDSA-AES128-GCM-SHA256" }, // 0xc02d
++    { "ecdhe_rsa_aes_128_gcm_sha_256", "ECDHE-RSA-AES128-GCM-SHA256" }, // 0xc02f
++    { "ecdhe_rsa_aes_256_gcm_sha_384", "ECDHE-RSA-AES256-GCM-SHA384" }, // 0xc030
++    { "ecdh_rsa_aes_128_gcm_sha_256", "ECDH-RSA-AES128-GCM-SHA256" }, // 0xc031
++    { "ecdhe_rsa_chacha20_poly1305_sha_256", "ECDHE-RSA-CHACHA20-POLY1305" }, // 0xcca8
++    { "ecdhe_ecdsa_chacha20_poly1305_sha_256", "ECDHE-ECDSA-CHACHA20-POLY1305" }, // 0xcca9
++    { "dhe_rsa_chacha20_poly1305_sha_256", "DHE-RSA-CHACHA20-POLY1305" }, // 0xccaa
++    // fips_des_sha (0xfefe) not supported
++    // fips_3des_sha (0xfeff) not supported
++    // rc4-md5 (0xff01) not supported
++    // rc4export (0xff02) not supported
++    // rc2 (0xff03) not supported
++    // rc2export (0xff04) not supported
++    // des (0xff06) not supported
++    // desede3 (0xff07) not supported
++  };
++  enum { MAX_CIPHER_LENGTH = 128 };
++  enum { NUM_OF_CIPHERS = sizeof(cipherlist) / sizeof(cipherlist[0]) };
++  const char *cipher = ciphers;
++  unsigned int i;
++  char *res = NULL;
++  size_t res_size = 0;
++
++  /* This part of the code comes mostly from old NSS implementation
++   * to maximize compatibility.
++   */
++  while(cipher && cipher[0]) {
++    const char *end;
++    char name[MAX_CIPHER_LENGTH + 1];
++    size_t len;
++    bool found = FALSE;
++    while((*cipher) && (ISBLANK(*cipher)))
++      ++cipher;
++
++    end = strpbrk(cipher, ":, ");
++    if(end)
++      len = end - cipher;
++    else
++      len = strlen(cipher);
++
++    if(len > MAX_CIPHER_LENGTH) {
++      free(res);
++      return NULL;
++    }
++    else if(len) {
++      memcpy(name, cipher, len);
++      name[len] = 0;
++
++      for(i = 0; i < NUM_OF_CIPHERS; i++) {
++        if(strcasecompare(name, cipherlist[i].nss)) {
++          /* append found cipher to "res" string */
++          const char *ssl = cipherlist[i].ssl;
++          size_t ssl_len = strlen(ssl);
++          size_t old_len = res ? strlen(res) : 0;
++          if(old_len + ssl_len + 2 > res_size) {
++            char *new_res;
++            /* compute new size, the (old_len/2) part is to reduce possible reallocations */
++            res_size = old_len + old_len/2 + ssl_len + 2;
++            new_res = realloc(res, res_size);
++            if(!new_res) {
++              free(res);
++              return NULL;
++            }
++            res = new_res;
++            res[old_len] = 0;
++          }
++          if(old_len)
++            res[old_len++] = ',';
++          strcpy(res + old_len, ssl);
++          found = TRUE;
++          break;
++        }
++      }
++    }
++
++    if(!found && len) {
++      free(res);
++      return NULL;
++    }
++    if(!end)
++      break;
++
++    cipher = end + 1;
++  }
++
++  return res;
++}
++#else
++static inline char *ciphers_from_nss(const char *ciphers)
++{
++  return NULL;
++}
++#endif
++
+ static CURLcode ossl_connect_step1(struct Curl_cfilter *cf,
+                                    struct Curl_easy *data)
+ {
+@@ -3660,8 +3839,13 @@
+     ciphers = (char *)DEFAULT_CIPHER_SELECTION;
+   if(ciphers) {
+     if(!SSL_CTX_set_cipher_list(backend->ctx, ciphers)) {
+-      failf(data, "failed setting cipher list: %s", ciphers);
+-      return CURLE_SSL_CIPHER;
++      char *converted_ciphers = ciphers_from_nss(ciphers);
++      if(converted_ciphers == NULL || !SSL_CTX_set_cipher_list(backend->ctx, converted_ciphers)) {
++        free(converted_ciphers);
++        failf(data, "failed setting cipher list: %s", ciphers);
++        return CURLE_SSL_CIPHER;
++      }
++      free(converted_ciphers);
+     }
+     infof(data, "Cipher selection: %s", ciphers);
+   }
+diff -ru curl-8.6.0/m4/curl-openssl.m4 curl-8.6.0.my/m4/curl-openssl.m4
+--- curl-8.6.0/m4/curl-openssl.m4	2024-01-25 12:54:04.000000000 +0000
++++ curl-8.6.0.my/m4/curl-openssl.m4	2024-03-07 15:21:24.043388000 +0000
+@@ -443,4 +443,16 @@
+     AC_MSG_RESULT([no])
+   ])
+ fi
++
++dnl ---
++dnl Enable cipher NSS compatibility for XenServer
++dnl ---
++if test X"$OPENSSL_ENABLED" = X"1"; then
++AC_ARG_ENABLE(nss-cipher-compat,
++AS_HELP_STRING([--enable-nss-cipher-compat],[Enable cipher NSS compatibility]),
++[ if test X"$enableval" = X"yes"; then
++    AC_DEFINE(CURL_NSS_CIPHER_COMPAT, 1, [if NSS cipher compatibility is enabled])
++  fi
++])
++fi
+ ])
