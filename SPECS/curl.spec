@@ -5,7 +5,7 @@
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
 Version: 8.6.0
-Release: %{?xsrel}%{?dist}
+Release: %{?xsrel}.1%{?dist}
 License: MIT
 Source0: curl-8.6.0.tar.xz
 Patch0: 0001-curl-8.6.0-remove-duplicate-content.patch
@@ -41,17 +41,10 @@ BuildRequires: openldap-devel
 BuildRequires: openssh-clients
 BuildRequires: openssh-server
 BuildRequires: openssl-devel
-BuildRequires: perl-interpreter
+BuildRequires: perl
 BuildRequires: pkgconfig
-%if "%{dist}" == ".xs8~2_1"
 # Yangtze
 BuildRequires: python-devel
-%else
-%if 0%{?xenserver} > 8
-BuildRequires: python-unversioned-command
-%endif
-BuildRequires: python3-devel
-%endif
 BuildRequires: sed
 BuildRequires: zlib-devel
 
@@ -203,10 +196,8 @@ sed -e 's|^35$|35,52|' -i tests/data/test323
 printf "4001\n" >> tests/data/DISABLED
 %endif
 
-%if "%{dist}" == ".xs8~2_1"
 # enable back NTLM_WB feature on Yangtze for compatibility
 perl -pi.orig -e 's/if_nametoindex/if_nametoindex fork/' configure.ac
-%endif
 
 # regenerate the configure script and Makefile.in files
 autoreconf -fiv
@@ -243,11 +234,7 @@ export common_configure_opts="          \
         --enable-ldaps                  \
         --disable-mqtt                  \
         --enable-ntlm                   \
-%if "%{dist}" == ".xs8~2_1"
         --enable-ntlm-wb                \
-%else
-        --disable-ntlm-wb               \
-%endif
         --enable-pop3                   \
         --enable-rtsp                   \
         --disable-smb                   \
@@ -322,7 +309,9 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 # should be fixed in next release https://github.com/curl/curl/pull/12843
 rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 
-%ldconfig_scriptlets -n libcurl
+%post -n libcurl -p /sbin/ldconfig
+
+%postun -n libcurl -p /sbin/ldconfig
 
 %files
 %doc CHANGES
@@ -353,6 +342,12 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
+* Wed May 29 2024 Gael Duperrey <gduperrey@vates.tech> - 8.6.0-2.1
+- Synced from XS82ECU1063
+- Removed xenserver-specific test of the dist macro
+- Replaced perl-interpreter BuildRequires with perl
+- Replaced unsupported %%lconfig_scriptlets macro with %%post and %%postun one liners
+
 * Thu Mar 07 2024 Frediano Ziglio <frediano.ziglio@cloud.com> - 8.6.0-2
 - Update release;
 - Add compatibility patch for NSS cipher list support.
