@@ -1,0 +1,83 @@
+From c7438ccfceee373a75d6d890259cf2e6b5e0e203 Mon Sep 17 00:00:00 2001
+From: Stefan Eissing <stefan@eissing.org>
+Date: Wed, 14 Feb 2024 16:27:23 +0100
+Subject: [PATCH] http_chunks: fix the accounting of consumed bytes
+
+Prior to this change chunks were handled correctly although in verbose
+mode libcurl could incorrectly warn of "Leftovers after chunking" even
+if there were none.
+
+Reported-by: Michael Kaufmann
+
+Fixes https://github.com/curl/curl/issues/12937
+Closes https://github.com/curl/curl/pull/12939
+
+(cherry picked from commit 59e2c78af3a5588d6e6ae6d2223b222f067e054b)
+Signed-off-by: Jan Macku <jamacku@redhat.com>
+---
+ lib/http_chunks.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/lib/http_chunks.c b/lib/http_chunks.c
+index 039c179c4..ad1ee9ada 100644
+--- a/lib/http_chunks.c
++++ b/lib/http_chunks.c
+@@ -152,6 +152,7 @@ static CURLcode httpchunk_readwrite(struct Curl_easy *data,
+         ch->hexbuffer[ch->hexindex++] = *buf;
+         buf++;
+         blen--;
++        (*pconsumed)++;
+       }
+       else {
+         char *endptr;
+@@ -189,6 +190,7 @@ static CURLcode httpchunk_readwrite(struct Curl_easy *data,
+ 
+       buf++;
+       blen--;
++      (*pconsumed)++;
+       break;
+ 
+     case CHUNK_DATA:
+@@ -236,6 +238,7 @@ static CURLcode httpchunk_readwrite(struct Curl_easy *data,
+       }
+       buf++;
+       blen--;
++      (*pconsumed)++;
+       break;
+ 
+     case CHUNK_TRAILER:
+@@ -293,6 +296,7 @@ static CURLcode httpchunk_readwrite(struct Curl_easy *data,
+       }
+       buf++;
+       blen--;
++      (*pconsumed)++;
+       break;
+ 
+     case CHUNK_TRAILER_CR:
+@@ -300,6 +304,7 @@ static CURLcode httpchunk_readwrite(struct Curl_easy *data,
+         ch->state = CHUNK_TRAILER_POSTCR;
+         buf++;
+         blen--;
++        (*pconsumed)++;
+       }
+       else {
+         ch->state = CHUNK_FAILED;
+@@ -320,6 +325,7 @@ static CURLcode httpchunk_readwrite(struct Curl_easy *data,
+         /* skip if CR */
+         buf++;
+         blen--;
++        (*pconsumed)++;
+       }
+       /* now wait for the final LF */
+       ch->state = CHUNK_STOP;
+@@ -328,6 +334,7 @@ static CURLcode httpchunk_readwrite(struct Curl_easy *data,
+     case CHUNK_STOP:
+       if(*buf == 0x0a) {
+         blen--;
++        (*pconsumed)++;
+         /* Record the length of any data left in the end of the buffer
+            even if there's no more chunks to read */
+         ch->datasize = blen;
+-- 
+2.43.2
+

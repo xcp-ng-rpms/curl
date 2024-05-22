@@ -1,0 +1,30 @@
+From d506d885aa16b4a87acbac082eea41dccdc7b69f Mon Sep 17 00:00:00 2001
+From: Kamil Dudka <kdudka@redhat.com>
+Date: Wed, 15 Feb 2023 10:42:38 +0100
+Subject: [PATCH] Revert "runtests: consider warnings fatal and error on them"
+
+While it might be useful for upstream developers, it is not so useful
+for downstream consumers.
+
+This reverts upstream commit 22f795c834cfdbacbb1b55426028a581e3cf67a8.
+---
+ tests/runtests.pl | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/tests/runtests.pl b/tests/runtests.pl
+index 71644ad18..0cf85c3fe 100755
+--- a/tests/runtests.pl
++++ b/tests/runtests.pl
+@@ -55,8 +55,7 @@
+ # given, this won't be a problem.
+ 
+ use strict;
+-# Promote all warnings to fatal
+-use warnings FATAL => 'all';
++use warnings;
+ use 5.006;
+ 
+ # These should be the only variables that might be needed to get edited:
+-- 
+2.39.1
+
