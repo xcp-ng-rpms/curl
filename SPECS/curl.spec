@@ -5,7 +5,7 @@
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
 Version: 8.6.0
-Release: %{?xsrel}.1%{?dist}
+Release: %{?xsrel}.2%{?dist}
 License: MIT
 Source0: curl-8.6.0.tar.xz
 Patch0: 0001-curl-8.6.0-remove-duplicate-content.patch
@@ -18,6 +18,15 @@ Patch6: 0104-curl-7.88.0-tests-warnings.patch
 Patch7: 0200-curl-8.6.0-ntml_wb-fix-buffer-type-typo.patch
 Patch8: 0300-curl-8.6.0-nss-compat.patch
 Patch9: 0301-curl-8.6.0-tests.patch
+
+# XCP-ng specific patches
+Patch1000: CVE-2024-2004.patch
+Patch1001: CVE-2024-2379.patch
+Patch1002: CVE-2024-2398.patch
+Patch1003: CVE-2024-2466.patch
+Patch1004: CVE-2024-6197.patch
+Patch1005: CVE-2024-7264-1.patch
+Patch1006: CVE-2024-7264-2.patch
 
 Provides: curl-full = %{version}-%{release}
 Provides: webclient
@@ -342,6 +351,9 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
+* Wed Aug 07 2024 Thierry Escande <thierry.escande@vates.tech> - 8.6.0-2.2
+- Backported CVEs 2024-2004, 2024-2379, 2024-2398, 2024-2466, 2024-6197, and 2024-7264
+
 * Wed May 29 2024 Gael Duperrey <gduperrey@vates.tech> - 8.6.0-2.1
 - Synced from XS82ECU1063
 - Removed xenserver-specific test of the dist macro
