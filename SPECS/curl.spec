@@ -1,32 +1,19 @@
-%global package_speccommit e7fd0e4acca0808e6f0e17b6cfcf88e7d65d903c
-%global usver 8.6.0
-%global xsver 2
-%global xsrel %{xsver}%{?xscount}%{?xshash}
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
-Version: 8.6.0
-Release: %{?xsrel}.2%{?dist}
+Version: 8.12.1
+Release: 1%{?dist}
 License: MIT
-Source0: curl-8.6.0.tar.xz
-Patch0: 0001-curl-8.6.0-remove-duplicate-content.patch
-Patch1: 0002-curl-8.6.0-ignore-response-body-to-HEAD.patch
-Patch2: 0003-curl-8.6.0-vtls-revert-receive-max-buffer-add-test-case.patch
-Patch3: 0004-curl-8.6.0-http_chunks-fix-the-accounting-of-consumed-bytes.patch
-Patch4: 0101-curl-7.32.0-multilib.patch
+Source0: curl-8.12.1.tar.gz
+#Patch0: 0001-curl-8.6.0-remove-duplicate-content.patch # Merged upstream
+#Patch1: 0002-curl-8.6.0-ignore-response-body-to-HEAD.patch # Merged upstream
+#Patch2: 0003-curl-8.6.0-vtls-revert-receive-max-buffer-add-test-case.patch # Merged upstream
+#Patch3: 0004-curl-8.6.0-http_chunks-fix-the-accounting-of-consumed-bytes.patch # Merged upstream
+Patch4: 0101-curl-8.12.1-multilib.patch
 Patch5: 0102-curl-7.84.0-test3026.patch
-Patch6: 0104-curl-7.88.0-tests-warnings.patch
-Patch7: 0200-curl-8.6.0-ntml_wb-fix-buffer-type-typo.patch
-Patch8: 0300-curl-8.6.0-nss-compat.patch
-Patch9: 0301-curl-8.6.0-tests.patch
-
-# XCP-ng specific patches
-Patch1000: CVE-2024-2004.patch
-Patch1001: CVE-2024-2379.patch
-Patch1002: CVE-2024-2398.patch
-Patch1003: CVE-2024-2466.patch
-Patch1004: CVE-2024-6197.patch
-Patch1005: CVE-2024-7264-1.patch
-Patch1006: CVE-2024-7264-2.patch
+#Patch6: 0104-curl-7.88.0-tests-warnings.patch # Merged upstream
+#Patch7: 0200-curl-8.6.0-ntml_wb-fix-buffer-type-typo.patch # Merged upstream
+Patch8: 0300-curl-8.12.1-nss-compat.patch
+Patch9: 0301-curl-8.12.1-tests.patch
 
 Provides: curl-full = %{version}-%{release}
 Provides: webclient
@@ -224,6 +211,7 @@ export common_configure_opts="          \
     --with-gssapi                       \
     --with-libidn2                      \
     --without-nghttp2                   \
+    --with-zsh-functions-dir            \
 %if 0%{?xenserver} <= 8
     --enable-nss-cipher-compat          \
 %endif
@@ -320,7 +308,7 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 %ldconfig_scriptlets -n libcurl
 
 %files
-%doc CHANGES
+%doc CHANGES.md
 %doc README
 %doc docs/BUGS.md
 %doc docs/FAQ
@@ -348,6 +336,11 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
+* Thu Mar 20 2025 Thierry Escande <thierry.escande@vates.tech> - 8.12.1-1
+- Import curl-8.12.1.tar.gz
+- Remove upstream patches and CVEs
+- Backport needed patches
+
 * Wed Aug 07 2024 Thierry Escande <thierry.escande@vates.tech> - 8.6.0-2.2
 - Backported CVEs 2024-2004, 2024-2379, 2024-2398, 2024-2466, 2024-6197, and 2024-7264
 
