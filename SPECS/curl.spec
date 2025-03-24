@@ -32,6 +32,9 @@ Patch102: 0102-curl-7.88.0-tests-warnings.patch
 # Patches ported from the XS package
 Patch300: 0300-curl-8.6.0-nss-compat.patch
 Patch301: 0301-curl-8.6.0-tests.patch
+
+# Backported from upstream patch
+Patch1001: CVE-2024-8096-gtls-fix-OCSP-stapling-management.patch
 %endif
 
 Provides: curl-full = %{version}-%{release}
@@ -498,6 +501,7 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 - Add %bcond build_minimal to disable libcurl-minimal package build
 - Update to curl v8.9.1 from el10 srpm
 - Port NSS cipher compat list patch and tests from XS8
+- Backport patch for CVE 2024-8096
 - *** Upstream changelog ***
   * Tue Oct 29 2024 Troy Dawson <tdawson@redhat.com> - 8.9.1-5
   - Bump release for October 2024 mass rebuild:
