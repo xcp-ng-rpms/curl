@@ -1,23 +1,52 @@
-%global package_speccommit e7fd0e4acca0808e6f0e17b6cfcf88e7d65d903c
-%global usver 8.6.0
-%global xsver 2
-%global xsrel %{xsver}%{?xscount}%{?xshash}
+# XCP-ng build condition (enabled by default)
+%bcond_without xcpng
+%if %{with xcpng}
+# Disable libcurl-minimal build for xcpng build
+%bcond_with build_minimal
+%else
+%bcond_without build_minimal
+%endif
+
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
 Version: 8.6.0
-Release: %{?xsrel}.2%{?dist}
-License: MIT
-Source0: curl-8.6.0.tar.xz
-Patch0: 0001-curl-8.6.0-remove-duplicate-content.patch
-Patch1: 0002-curl-8.6.0-ignore-response-body-to-HEAD.patch
-Patch2: 0003-curl-8.6.0-vtls-revert-receive-max-buffer-add-test-case.patch
-Patch3: 0004-curl-8.6.0-http_chunks-fix-the-accounting-of-consumed-bytes.patch
-Patch4: 0101-curl-7.32.0-multilib.patch
-Patch5: 0102-curl-7.84.0-test3026.patch
-Patch6: 0104-curl-7.88.0-tests-warnings.patch
-Patch7: 0200-curl-8.6.0-ntml_wb-fix-buffer-type-typo.patch
-Patch8: 0300-curl-8.6.0-nss-compat.patch
-Patch9: 0301-curl-8.6.0-tests.patch
+Release: 2.2%{?dist}
+License: curl
+Source0: https://curl.se/download/%{name}-%{version}.tar.xz
+Source1: https://curl.se/download/%{name}-%{version}.tar.xz.asc
+# The curl download page ( https://curl.se/download.html ) links
+# to Daniel's address page https://daniel.haxx.se/address.html for the GPG Key,
+# which points to the GPG key as of April 7th 2016 of https://daniel.haxx.se/mykey.asc
+Source2: mykey.asc
+
+# remove duplicate content from curl-config.1
+Patch001: 0001-curl-8.6.0-remove-duplicate-content.patch
+
+# ignore response bode to HEAD requests
+# https://bodhi.fedoraproject.org/updates/FEDORA-2024-634a6662aa
+Patch002: 0002-curl-8.6.0-ignore-response-body-to-HEAD.patch
+
+# revert "receive max buffer" + add test case
+# it breaks pycurl tests suite
+Patch003: 0003-curl-8.6.0-vtls-revert-receive-max-buffer-add-test-case.patch
+
+# Fix: Leftovers after chunking should not be part of the curl buffer output
+Patch004: 0004-curl-8.6.0-http_chunks-fix-the-accounting-of-consumed-bytes.patch
+
+# patch making libcurl multilib ready
+Patch101: 0101-curl-7.32.0-multilib.patch
+
+# test3026: disable valgrind
+Patch102: 0102-curl-7.84.0-test3026.patch
+
+# do not fail on warnings in the upstream test driver
+Patch104: 0104-curl-7.88.0-tests-warnings.patch
+
+%if %{with xcpng}
+# Patches ported from the XS package
+Patch200: 0200-curl-8.6.0-ntml_wb-fix-buffer-type-typo.patch
+Patch300: 0300-curl-8.6.0-nss-compat.patch
+Patch301: 0301-curl-8.6.0-tests.patch
 
 # XCP-ng specific patches
 Patch1000: CVE-2024-2004.patch
@@ -27,23 +56,36 @@ Patch1003: CVE-2024-2466.patch
 Patch1004: CVE-2024-6197.patch
 Patch1005: CVE-2024-7264-1.patch
 Patch1006: CVE-2024-7264-2.patch
+%endif
 
 Provides: curl-full = %{version}-%{release}
+# do not fail when trying to install curl-minimal after drop
+Provides: curl-minimal = %{version}-%{release}
 Provides: webclient
 URL: https://curl.se/
+
+# The reason for maintaining two separate packages for curl is no longer valid.
+# The curl-minimal is currently almost identical to curl-full, so let's drop curl-minimal.
+# For more details, see https://bugzilla.redhat.com/show_bug.cgi?id=2262096
+Obsoletes: curl-minimal < 8.6.0-4
+
 BuildRequires: automake
+%if %{without xcpng}
+BuildRequires: brotli-devel
+%endif
 BuildRequires: coreutils
 BuildRequires: gcc
 BuildRequires: groff
 BuildRequires: krb5-devel
-%if 0%{?xenserver} > 8
+%if %{without xcpng}
 BuildRequires: libidn2-devel
-%global libssh libssh
+BuildRequires: libnghttp2-devel
+BuildRequires: libpsl-devel
+BuildRequires: libssh-devel
 %else
 BuildRequires: libidn-devel
-%global libssh libssh2
+BuildRequires: libssh2-devel
 %endif
-BuildRequires: %{libssh}-devel
 BuildRequires: libtool
 BuildRequires: make
 BuildRequires: openldap-devel
@@ -52,7 +94,7 @@ BuildRequires: openssh-server
 BuildRequires: openssl-devel
 BuildRequires: perl-interpreter
 BuildRequires: pkgconfig
-%if 0%{?xenserver} > 8
+%if %{without xcpng}
 BuildRequires: python-unversioned-command
 %endif
 BuildRequires: python3-devel
@@ -71,7 +113,7 @@ BuildRequires: perl(Pod::Usage)
 BuildRequires: perl(strict)
 BuildRequires: perl(warnings)
 
-%if 0%{?xenserver} > 8
+%if %{without xcpng}
 # needed for test1560 to succeed
 BuildRequires: glibc-langpack-en
 %endif
@@ -81,6 +123,11 @@ BuildRequires: gnutls-utils
 
 # hostname(1) is used by the test-suite but it is missing in armv7hl buildroot
 BuildRequires: hostname
+
+%if %{without xcpng}
+# nghttpx (an HTTP/2 proxy) is used by the upstream test-suite
+BuildRequires: nghttp2
+%endif
 
 # perl modules used in the test suite
 BuildRequires: perl(B)
@@ -137,7 +184,11 @@ Requires: libcurl%{?_isa} >= %{version}-%{release}
 
 # require at least the version of libssh that we were built against,
 # to ensure that we have the necessary symbols available (#525002, #642796)
-%global libssh_version %(pkg-config --modversion %{libssh} 2>/dev/null || echo 0)
+%if %{without xcpng}
+%global libssh_version %(pkg-config --modversion libssh 2>/dev/null || echo 0)
+%else
+%global libssh_version %(pkg-config --modversion libssh2 2>/dev/null || echo 0)
+%endif
 
 # require at least the version of openssl-libs that we were built against,
 # to ensure that we have the necessary symbols available (#1462184, #1462211)
@@ -150,12 +201,18 @@ FTP, FTPS, HTTP, HTTPS, SCP, SFTP, TFTP, TELNET, DICT, LDAP, LDAPS, FILE, IMAP,
 SMTP, POP3 and RTSP.  curl supports SSL certificates, HTTP POST, HTTP PUT, FTP
 uploading, HTTP form based upload, proxies, cookies, user+password
 authentication (Basic, Digest, NTLM, Negotiate, kerberos...), file transfer
-resume, proxy tunneling and a busload of other useful tricks.
+resume, proxy tunneling and a busload of other useful tricks. 
 
 %package -n libcurl
 Summary: A library for getting files from web servers
-Requires: %{libssh}%{?_isa} >= %{libssh_version}
-Requires: openssl-libs%{?_isa} >= %{openssl_version}
+%if %{without xcpng}
+Requires: libnghttp2%{?_isa} >= %{libnghttp2_version}
+Requires: libpsl%{?_isa} >= %{libpsl_version}
+Requires: libssh%{?_isa} >= %{libssh_version}
+%else
+Requires: libssh2%{?_isa} >= %{libssh_version}
+%endif
+Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
 Provides: libcurl-full = %{version}-%{release}
 Provides: libcurl-full%{?_isa} = %{version}-%{release}
 
@@ -180,7 +237,29 @@ The libcurl-devel package includes header files and libraries necessary for
 developing programs which use the libcurl library. It contains the API
 documentation of the library, too.
 
+%if %{with build_minimal}
+%package -n libcurl-minimal
+Summary: Conservatively configured build of libcurl for minimal installations
+Requires: libnghttp2%{?_isa} >= %{libnghttp2_version}
+Requires: openssl-libs%{?_isa} >= 1:%{openssl_version}
+Provides: libcurl = %{version}-%{release}
+Provides: libcurl%{?_isa} = %{version}-%{release}
+Conflicts: libcurl%{?_isa}
+RemovePathPostfixes: .minimal
+# needed for RemovePathPostfixes to work with shared libraries
+%undefine __brp_ldconfig
+
+%description -n libcurl-minimal
+This is a replacement of the 'libcurl' package for minimal installations.  It
+comes with a limited set of features compared to the 'libcurl' package.  On the
+other hand, the package is smaller and requires fewer run-time dependencies to
+be installed.
+%endif
+
 %prep
+%if %{without xcpng}
+%{gpgverify} --keyring='%{SOURCE2}' --signature='%{SOURCE1}' --data='%{SOURCE0}'
+%endif
 %autosetup -p1
 
 # temporarily disable test 0313
@@ -189,6 +268,12 @@ documentation of the library, too.
 # disable test 1801
 # <https://github.com/bagder/curl/commit/21e82bd6#commitcomment-12226582>
 printf "313\n1801\n" >> tests/data/DISABLED
+
+# test3026: avoid pthread_create() failure due to resource exhaustion on i386
+%ifarch %{ix86}
+sed -e 's|NUM_THREADS 1000$|NUM_THREADS 256|' \
+    -i tests/libtest/lib3026.c
+%endif
 
 # adapt test 323 for updated OpenSSL
 sed -e 's|^35$|35,52|' -i tests/data/test323
@@ -202,7 +287,7 @@ sed -e 's|^35$|35,52|' -i tests/data/test323
     eval "$cmd"
 )
 
-%if 0%{?xenserver} > 8
+%if %{without xcpng}
 # disable test for NSS cipher compatibility
 printf "4001\n" >> tests/data/DISABLED
 %endif
@@ -211,7 +296,7 @@ printf "4001\n" >> tests/data/DISABLED
 autoreconf -fiv
 
 %build
-mkdir build-full
+mkdir build-{full,minimal}
 export common_configure_opts="          \
     --cache-file=../config.cache        \
     --disable-manual                    \
@@ -223,13 +308,42 @@ export common_configure_opts="          \
     --without-zstd                      \
     --with-gssapi                       \
     --with-libidn2                      \
+%if %{without xcpng}
+    --with-nghttp2                      \
+%else
     --without-nghttp2                   \
-%if 0%{?xenserver} <= 8
     --enable-nss-cipher-compat          \
 %endif
     --with-ssl --with-ca-bundle=%{_sysconfdir}/pki/tls/certs/ca-bundle.crt"
 
 %global _configure ../configure
+
+%if %{with build_minimal}
+# configure minimal build
+(
+    cd build-minimal
+    %configure $common_configure_opts   \
+        --disable-dict                  \
+        --disable-gopher                \
+        --disable-imap                  \
+        --disable-ldap                  \
+        --disable-ldaps                 \
+        --disable-mqtt                  \
+        --disable-ntlm                  \
+        --disable-ntlm-wb               \
+        --disable-pop3                  \
+        --disable-rtsp                  \
+        --disable-smb                   \
+        --disable-smtp                  \
+        --disable-telnet                \
+        --disable-tftp                  \
+        --disable-tls-srp               \
+        --disable-websockets            \
+        --without-brotli                \
+        --without-libpsl                \
+        --without-libssh
+)
+%endif
 
 # configure full build
 (
@@ -240,33 +354,62 @@ export common_configure_opts="          \
         --enable-imap                   \
         --enable-ldap                   \
         --enable-ldaps                  \
+%if %{without xcpng}
+        --enable-mqtt                   \
+%else
         --disable-mqtt                  \
+%endif
         --enable-ntlm                   \
+%if %{without xcpng}
+        --enable-ntlm-wb                \
+%else
         --disable-ntlm-wb               \
+%endif
         --enable-pop3                   \
         --enable-rtsp                   \
+%if %{without xcpng}
+        --enable-smb                    \
+%else
         --disable-smb                   \
+%endif
         --enable-smtp                   \
         --enable-telnet                 \
         --enable-tftp                   \
+%if %{without xcpng}
+        --enable-tls-srp                \
+        --enable-websockets             \
+        --with-brotli                   \
+        --with-libpsl                   \
+        --with-libssh
+%else
         --disable-tls-srp               \
         --disable-websockets            \
         --disable-alt-svc               \
-        --disable-tls-srp               \
         --without-brotli                \
         --without-libpsl                \
-        --with-${libssh}
+        --with-libssh2
+%endif
 )
 
 # avoid using rpath
 sed -e 's/^runpath_var=.*/runpath_var=/' \
     -e 's/^hardcode_libdir_flag_spec=".*"$/hardcode_libdir_flag_spec=""/' \
+%if %{with build_minimal}
+    -i build-{full,minimal}/libtool
+%else
     -i build-full/libtool
+%endif
 
+%if %{with build_minimal}
+%make_build V=1 -C build-minimal
+%endif
 %make_build V=1 -C build-full
 
 %check
 # compile upstream test-cases
+%if %{with build_minimal}
+%make_build V=1 -C build-minimal/tests
+%endif
 %make_build V=1 -C build-full/tests
 
 # relax crypto policy for the test-suite to make it pass again (#1610888)
@@ -280,8 +423,12 @@ export srcdir=../../tests
 # https://fedoraproject.org/wiki/Changes/DebuginfodByDefault
 unset DEBUGINFOD_URLS
 
-# run the upstream test-suite
+# run the upstream test-suite for both curl-minimal and curl-full
+%if %{with build_minimal}
+for size in minimal full; do (
+%else
 for size in full; do (
+%endif
     cd build-${size}
 
     # we have to override LD_LIBRARY_PATH because we eliminated rpath
@@ -294,6 +441,15 @@ done
 
 
 %install
+%if %{with build_minimal}
+# install and rename the library that will be packaged as libcurl-minimal
+%make_install -C build-minimal/lib
+rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.{la,so}
+for i in ${RPM_BUILD_ROOT}%{_libdir}/*; do
+    mv -v $i $i.minimal
+done
+%endif
+
 # install libcurl.m4
 install -d $RPM_BUILD_ROOT%{_datadir}/aclocal
 install -m 644 docs/libcurl/libcurl.m4 $RPM_BUILD_ROOT%{_datadir}/aclocal
@@ -318,6 +474,10 @@ rm -f ${RPM_BUILD_ROOT}%{_libdir}/libcurl.la
 rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 
 %ldconfig_scriptlets -n libcurl
+
+%if %{with build_minimal}
+%ldconfig_scriptlets -n libcurl-minimal
+%endif
 
 %files
 %doc CHANGES
@@ -346,6 +506,13 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 %{_mandir}/man1/curl-config.1*
 %{_mandir}/man3/*
 %{_datadir}/aclocal/libcurl.m4
+
+%if %{with build_minimal}
+%files -n libcurl-minimal
+%license COPYING
+%{_libdir}/libcurl.so.4.minimal
+%{_libdir}/libcurl.so.4.[0-9].[0-9].minimal
+%endif
 
 %changelog
 * Wed Aug 07 2024 Thierry Escande <thierry.escande@vates.tech> - 8.6.0-2.2
