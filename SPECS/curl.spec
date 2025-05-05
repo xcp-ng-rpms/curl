@@ -9,8 +9,8 @@
 
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
-Version: 8.6.0
-Release: 2.2%{?dist}
+Version: 8.9.1
+Release: 5.1%{?dist}
 License: curl
 Source0: https://curl.se/download/%{name}-%{version}.tar.xz
 Source1: https://curl.se/download/%{name}-%{version}.tar.xz.asc
@@ -19,43 +19,19 @@ Source1: https://curl.se/download/%{name}-%{version}.tar.xz.asc
 # which points to the GPG key as of April 7th 2016 of https://daniel.haxx.se/mykey.asc
 Source2: mykey.asc
 
-# remove duplicate content from curl-config.1
-Patch001: 0001-curl-8.6.0-remove-duplicate-content.patch
-
-# ignore response bode to HEAD requests
-# https://bodhi.fedoraproject.org/updates/FEDORA-2024-634a6662aa
-Patch002: 0002-curl-8.6.0-ignore-response-body-to-HEAD.patch
-
-# revert "receive max buffer" + add test case
-# it breaks pycurl tests suite
-Patch003: 0003-curl-8.6.0-vtls-revert-receive-max-buffer-add-test-case.patch
-
-# Fix: Leftovers after chunking should not be part of the curl buffer output
-Patch004: 0004-curl-8.6.0-http_chunks-fix-the-accounting-of-consumed-bytes.patch
+# fix crashes with transmission due to SIGPIPE
+Patch001: 0001-curl-8.9.1-sigpipe-init-the-struct-so-that-first-apply-ignores.patch
 
 # patch making libcurl multilib ready
 Patch101: 0101-curl-7.32.0-multilib.patch
 
-# test3026: disable valgrind
-Patch102: 0102-curl-7.84.0-test3026.patch
-
 # do not fail on warnings in the upstream test driver
-Patch104: 0104-curl-7.88.0-tests-warnings.patch
+Patch102: 0102-curl-7.88.0-tests-warnings.patch
 
 %if %{with xcpng}
 # Patches ported from the XS package
-Patch200: 0200-curl-8.6.0-ntml_wb-fix-buffer-type-typo.patch
 Patch300: 0300-curl-8.6.0-nss-compat.patch
 Patch301: 0301-curl-8.6.0-tests.patch
-
-# XCP-ng specific patches
-Patch1000: CVE-2024-2004.patch
-Patch1001: CVE-2024-2379.patch
-Patch1002: CVE-2024-2398.patch
-Patch1003: CVE-2024-2466.patch
-Patch1004: CVE-2024-6197.patch
-Patch1005: CVE-2024-7264-1.patch
-Patch1006: CVE-2024-7264-2.patch
 %endif
 
 Provides: curl-full = %{version}-%{release}
@@ -203,6 +179,8 @@ uploading, HTTP form based upload, proxies, cookies, user+password
 authentication (Basic, Digest, NTLM, Negotiate, kerberos...), file transfer
 resume, proxy tunneling and a busload of other useful tricks. 
 
+%bcond openssl_engine %[!(0%{?rhel} >= 10)]
+
 %package -n libcurl
 Summary: A library for getting files from web servers
 %if %{without xcpng}
@@ -262,13 +240,6 @@ be installed.
 %endif
 %autosetup -p1
 
-# temporarily disable test 0313
-# <https://bugzilla.redhat.com/show_bug.cgi?id=2263877>
-# <https://github.com/curl/curl/pull/11531>
-# disable test 1801
-# <https://github.com/bagder/curl/commit/21e82bd6#commitcomment-12226582>
-printf "313\n1801\n" >> tests/data/DISABLED
-
 # test3026: avoid pthread_create() failure due to resource exhaustion on i386
 %ifarch %{ix86}
 sed -e 's|NUM_THREADS 1000$|NUM_THREADS 256|' \
@@ -296,6 +267,11 @@ printf "4001\n" >> tests/data/DISABLED
 autoreconf -fiv
 
 %build
+
+%if %{without openssl_engine}
+export CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_ENGINE"
+%endif
+
 mkdir build-{full,minimal}
 export common_configure_opts="          \
     --cache-file=../config.cache        \
@@ -314,7 +290,8 @@ export common_configure_opts="          \
     --without-nghttp2                   \
     --enable-nss-cipher-compat          \
 %endif
-    --with-ssl --with-ca-bundle=%{_sysconfdir}/pki/tls/certs/ca-bundle.crt"
+    --with-ssl --with-ca-bundle=%{_sysconfdir}/pki/tls/certs/ca-bundle.crt \
+    --with-zsh-functions-dir"
 
 %global _configure ../configure
 
@@ -515,6 +492,42 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 %endif
 
 %changelog
+* Mon Apr 28 2025 Thierry Escande <thierry.escande@vates.tech> - 8.9.1-5.1
+- Restore changes from original fc40 specfile
+- Add %bcond xcpng for specific XCP-ng build directives
+- Add %bcond build_minimal to disable libcurl-minimal package build
+- Update to curl v8.9.1 from el10 srpm
+- Port NSS cipher compat list patch and tests from XS8
+- *** Upstream changelog ***
+  * Tue Oct 29 2024 Troy Dawson <tdawson@redhat.com> - 8.9.1-5
+  - Bump release for October 2024 mass rebuild:
+    Resolves: RHEL-64018
+  * Mon Aug 19 2024 Jacek Migacz <jmigacz@redhat.com> - 8.9.1-4
+  - correct indentation in test plan
+  * Fri Aug 02 2024 Jacek Migacz <jmigacz@redhat.com> - 8.9.1-3
+  - fix libcurl and libcurl-minimal conflict in test plan (RHEL-52103)
+  * Fri Aug 02 2024 Jacek Migacz <jmigacz@redhat.com> - 8.9.1-2
+  - add gating configuration (RHEL-52103)
+  - sigpipe: init the struct so that first apply ignores (RHEL-53327)
+  * Wed Jul 31 2024 Jacek Migacz <jmigacz@redhat.com> - 8.9.1-1
+  - new upstream release (RHEL-50806)
+  * Tue Jul 9 2024 Jacek Migacz <jmigacz@redhat.com> - 8.6.0-8
+  - disable OpenSSL Engine API support (RHEL-30436)
+  - setopt: Fix disabling all protocols (CVE-2024-2004)
+  - http2: push headers better cleanup (CVE-2024-2398)
+  * Mon Jun 24 2024 Troy Dawson <tdawson@redhat.com> - 8.6.0-7
+  - Bump release for June 2024 mass rebuild
+  * Mon Feb 12 2024 Jan Macku <jamacku@redhat.com> - 8.6.0-6
+  - revert "receive max buffer" + add test case
+  - temporarily disable test 0313
+  - remove suggests of libcurl-minimal in curl-full
+  * Mon Feb 12 2024 Jan Macku <jamacku@redhat.com> - 8.6.0-5
+  - add Provides to curl-minimal
+  * Wed Feb 07 2024 Jan Macku <jamacku@redhat.com> - 8.6.0-4
+  - drop curl-minimal subpackage in favor of curl-full (#2262096)
+  * Mon Feb 05 2024 Jan Macku <jamacku@redhat.com> - 8.6.0-3
+  - ignore response body to HEAD requests
+
 * Wed Aug 07 2024 Thierry Escande <thierry.escande@vates.tech> - 8.6.0-2.2
 - Backported CVEs 2024-2004, 2024-2379, 2024-2398, 2024-2466, 2024-6197, and 2024-7264
 

@@ -1,21 +1,28 @@
+Ported-by: Thierry Escande <thierry.escande@vates.tech>
+
+Port note:
+	test4000 was using curlc to set the bad ciphers list but this does not
+	seem to work anymore with curl v8.9.1. Instead, bad ciphers are passed
+	to the curl command line with the --ciphers option.
+---
 diff --git a/tests/data/Makefile.inc b/tests/data/Makefile.inc
-index cd393da..09d5c49 100644
+index 792cb16..ced6f81 100644
 --- a/tests/data/Makefile.inc
 +++ b/tests/data/Makefile.inc
-@@ -259,4 +259,6 @@ test3024 test3025 test3026 test3027 test3028 test3029 test3030 \
+@@ -263,4 +263,6 @@ test3024 test3025 test3026 test3027 test3028 test3029 test3030 \
  \
  test3100 test3101 test3102 test3103 \
  test3200 \
--test3201 test3202
-+test3201 test3202 \
+-test3201 test3202 test3203 test3204 test3205
++test3201 test3202 test3203 test3204 test3205 \
 +\
 +test4000 test4001
 diff --git a/tests/data/test4000 b/tests/data/test4000
 new file mode 100644
-index 0000000..e5abfcd
+index 0000000..adf2f9f
 --- /dev/null
 +++ b/tests/data/test4000
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,44 @@
 +<testcase>
 +<info>
 +<keywords>
@@ -43,15 +50,12 @@ index 0000000..e5abfcd
 +<name>
 +HTTPS GET with wrong cipher list
 +</name>
-+<file1 name="%LOGDIR/.config/curlrc">
-+ciphers = invalid,list,of,ciphers
-+</file1>
 +<setenv>
 +CURL_HOME=%PWD/%LOGDIR
 +XDG_CONFIG_HOME=
 +</setenv>
 +<command>
-+--cacert %SRCDIR/certs/EdelCurlRoot-ca.crt https://localhost:%HTTPSPORT/%TESTNUMBER
++--ciphers invalid,list,of,ciphers --cacert %SRCDIR/certs/EdelCurlRoot-ca.crt https://localhost:%HTTPSPORT/%TESTNUMBER
 +</command>
 +</client>
 +
@@ -65,7 +69,7 @@ index 0000000..e5abfcd
 +</testcase>
 diff --git a/tests/data/test4001 b/tests/data/test4001
 new file mode 100644
-index 0000000..49552f6
+index 0000000..c9d1fd9
 --- /dev/null
 +++ b/tests/data/test4001
 @@ -0,0 +1,59 @@
