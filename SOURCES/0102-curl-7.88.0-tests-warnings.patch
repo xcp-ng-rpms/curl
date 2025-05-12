@@ -23,8 +23,8 @@ index 71644ad18..0cf85c3fe 100755
 -use warnings FATAL => 'all';
 +use warnings;
  use 5.006;
+ use POSIX qw(strftime);
  
- # These should be the only variables that might be needed to get edited:
 -- 
 2.39.1
 
