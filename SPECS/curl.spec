@@ -1,7 +1,14 @@
-%global package_speccommit e7fd0e4acca0808e6f0e17b6cfcf88e7d65d903c
+%global package_speccommit 0a4a120910afad640bc20287ff799962de47d653
 %global usver 8.6.0
-%global xsver 2
+%global xsver 5
 %global xsrel %{xsver}%{?xscount}%{?xshash}
+
+%if 0%{?xenserver} < 9
+%bcond_without _libssh
+%else
+%bcond_with _libssh
+%endif
+
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
 Version: 8.6.0
@@ -28,13 +35,16 @@ BuildRequires: gcc
 BuildRequires: groff
 BuildRequires: krb5-devel
 %if 0%{?xenserver} > 8
+BuildRequires: libnghttp2-devel
 BuildRequires: libidn2-devel
 %global libssh libssh
 %else
 BuildRequires: libidn-devel
 %global libssh libssh2
 %endif
+%if %{with _libssh}
 BuildRequires: %{libssh}-devel
+%endif
 BuildRequires: libtool
 BuildRequires: make
 BuildRequires: openldap-devel
@@ -77,6 +87,11 @@ BuildRequires: gnutls-utils
 
 # hostname(1) is used by the test-suite but it is missing in armv7hl buildroot
 BuildRequires: hostname
+
+%if 0%{?xenserver} > 8
+# nghttpx (an HTTP/2 proxy) is used by the upstream test-suite
+BuildRequires: nghttp2
+%endif
 
 # perl modules used in the test suite
 BuildRequires: perl(B)
@@ -131,9 +146,11 @@ Requires: libcurl%{?_isa} >= %{version}-%{release}
 # to ensure that we have the necessary symbols available (#1631804)
 %global libpsl_version %(pkg-config --modversion libpsl 2>/dev/null || echo 0)
 
+%if %{with _libssh}
 # require at least the version of libssh that we were built against,
 # to ensure that we have the necessary symbols available (#525002, #642796)
 %global libssh_version %(pkg-config --modversion %{libssh} 2>/dev/null || echo 0)
+%endif
 
 # require at least the version of openssl-libs that we were built against,
 # to ensure that we have the necessary symbols available (#1462184, #1462211)
@@ -150,7 +167,12 @@ resume, proxy tunneling and a busload of other useful tricks.
 
 %package -n libcurl
 Summary: A library for getting files from web servers
+%if 0%{?xenserver} > 8
+Requires: libnghttp2%{?_isa} >= %{libnghttp2_version}
+%endif
+%if %{with _libssh}
 Requires: %{libssh}%{?_isa} >= %{libssh_version}
+%endif
 Requires: openssl-libs%{?_isa} >= %{openssl_version}
 Provides: libcurl-full = %{version}-%{release}
 Provides: libcurl-full%{?_isa} = %{version}-%{release}
@@ -224,7 +246,7 @@ export common_configure_opts="          \
     --without-zstd                      \
     --with-gssapi                       \
     --with-libidn2                      \
-    --without-nghttp2                   \
+    --with-nghttp2                      \
 %if 0%{?xenserver} <= 8
     --enable-nss-cipher-compat          \
 %endif
@@ -260,7 +282,11 @@ export common_configure_opts="          \
         --disable-tls-srp               \
         --without-brotli                \
         --without-libpsl                \
-        --with-${libssh}
+%if %{with _libssh}
+        --with-%{libssh}
+%else
+        --without-%{libssh}
+%endif
 )
 
 # avoid using rpath
@@ -353,6 +379,16 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 %{_datadir}/aclocal/libcurl.m4
 
 %changelog
+* Mon Nov 11 2024 Lin Liu <Lin.Liu01@cloud.com> - 8.6.0-5
+- CP-50551: Fixup disable libssh
+
+* Thu Oct 24 2024 Lin Liu <Lin.Liu01@cloud.com> - 8.6.0-4
+- CP-50278: Rebuild with OpenSSL 3 for XS8
+- CP-50551: Disable libssh in XS9
+
+* Tue Jul 16 2024 Stephen Cheng <stephen.cheng@cloud.com> - 8.6.0-3
+- Enable http2 feature
+
 * Thu Mar 07 2024 Frediano Ziglio <frediano.ziglio@cloud.com> - 8.6.0-2
 - Update release;
 - Add compatibility patch for NSS cipher list support.
