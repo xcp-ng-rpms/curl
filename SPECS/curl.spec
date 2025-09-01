@@ -497,8 +497,8 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 %changelog
 * Mon Apr 28 2025 Thierry Escande <thierry.escande@vates.tech> - 8.9.1-5.1
 - Restore changes from original fc40 specfile
-- Add %bcond xcpng for specific XCP-ng build directives
-- Add %bcond build_minimal to disable libcurl-minimal package build
+- Add %%bcond xcpng for specific XCP-ng build directives
+- Add %%bcond build_minimal to disable libcurl-minimal package build
 - Update to curl v8.9.1 from el10 srpm
 - Port NSS cipher compat list patch and tests from XS8
 - Backport patch for CVE 2024-8096
