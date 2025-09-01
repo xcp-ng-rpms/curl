@@ -10,7 +10,7 @@
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
 Version: 8.9.1
-Release: 5.2%{?dist}
+Release: 5.2~xsrebase.1%{?dist}
 License: curl
 Source0: https://curl.se/download/%{name}-%{version}.tar.xz
 Source1: https://curl.se/download/%{name}-%{version}.tar.xz.asc
