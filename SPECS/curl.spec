@@ -535,7 +535,7 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 * Wed Aug 07 2024 Thierry Escande <thierry.escande@vates.tech> - 8.6.0-2.2
 - Backported CVEs 2024-2004, 2024-2379, 2024-2398, 2024-2466, 2024-6197, and 2024-7264
 
-* Wed May 31 2024 Gael Duperrey <gduperrey@vates.tech> - 8.6.0-2.1
+* Fri May 31 2024 Gael Duperrey <gduperrey@vates.tech> - 8.6.0-2.1
 - Synced from curl-8.6.0-2.xs8.src.rpm
 - Removed xenserver-specific test of the dist macro
 
