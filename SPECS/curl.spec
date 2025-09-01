@@ -497,8 +497,8 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 %changelog
 * Mon Apr 28 2025 Thierry Escande <thierry.escande@vates.tech> - 8.9.1-5.1
 - Restore changes from original fc40 specfile
-- Add %bcond xcpng for specific XCP-ng build directives
-- Add %bcond build_minimal to disable libcurl-minimal package build
+- Add %%bcond xcpng for specific XCP-ng build directives
+- Add %%bcond build_minimal to disable libcurl-minimal package build
 - Update to curl v8.9.1 from el10 srpm
 - Port NSS cipher compat list patch and tests from XS8
 - Backport patch for CVE 2024-8096
@@ -535,7 +535,7 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 * Wed Aug 07 2024 Thierry Escande <thierry.escande@vates.tech> - 8.6.0-2.2
 - Backported CVEs 2024-2004, 2024-2379, 2024-2398, 2024-2466, 2024-6197, and 2024-7264
 
-* Wed May 31 2024 Gael Duperrey <gduperrey@vates.tech> - 8.6.0-2.1
+* Fri May 31 2024 Gael Duperrey <gduperrey@vates.tech> - 8.6.0-2.1
 - Synced from curl-8.6.0-2.xs8.src.rpm
 - Removed xenserver-specific test of the dist macro
 
