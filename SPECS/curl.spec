@@ -10,7 +10,7 @@
 Summary: A utility for getting files from remote servers (FTP, HTTP, and others)
 Name: curl
 Version: 8.9.1
-Release: 5.1%{?dist}
+Release: 5.2%{?dist}
 License: curl
 Source0: https://curl.se/download/%{name}-%{version}.tar.xz
 Source1: https://curl.se/download/%{name}-%{version}.tar.xz.asc
@@ -495,6 +495,9 @@ rm -f ${RPM_BUILD_ROOT}%{_mandir}/man1/mk-ca-bundle.1*
 %endif
 
 %changelog
+* Tue Aug 12 2025 Gaëtan Lehmann <gaetan.lehmann@vates.tech> - 8.9.1-5.2
+- Rebuild for openssl 3
+
 * Mon Apr 28 2025 Thierry Escande <thierry.escande@vates.tech> - 8.9.1-5.1
 - Restore changes from original fc40 specfile
 - Add %%bcond xcpng for specific XCP-ng build directives
